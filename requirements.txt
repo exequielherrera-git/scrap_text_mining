@@ -1,0 +1,18 @@
+# Web Mining TP1 2026 — dependencias del proyecto
+# Instalación: pip install -r requirements.txt
+
+# Servidor web y API
+flask>=3.1
+
+# Scraping
+scrapy>=2.15
+beautifulsoup4>=4.14
+lxml>=6.0          # parser HTML usado por BeautifulSoup en features.py
+
+# ML y vectorización
+scikit-learn>=1.8
+numpy>=2.4
+joblib>=1.5
+
+# NLP
+nltk>=3.9          # SnowballStemmer para tokenización en español

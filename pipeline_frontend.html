@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Mining Pipeline Dashboard</title>
+<style>
+:root {
+  --bg:      #f5f4f0;
+  --surface: #ffffff;
+  --panel:   #eeede8;
+  --border:  #dddbd3;
+  --text:    #1a1917;
+  --muted:   #8c8882;
+
+  --green:  #166534;
+  --red:    #991b1b;
+  --blue:   #1e3a8a;
+  --orange: #9a3412;
+  --purple: #5b21b6;
+  --amber:  #92400e;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.wrapper {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 3.5rem 2rem 5rem;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+header {
+  margin-bottom: 3rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid var(--border);
+}
+header h1 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+header p { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+
+/* ── Section ──────────────────────────────────────────────────────────────── */
+.section {
+  padding: 2rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.section-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* ── KPI grid ─────────────────────────────────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+@media (max-width: 600px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.kpi {
+  background: var(--panel);
+  border-radius: 0.25rem;
+  padding: 1rem 1rem 0.85rem;
+  text-align: center;
+}
+.kpi-label {
+  font-size: 0.63rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+.kpi-value {
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+.kpi-total {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: right;
+  margin-top: 0.4rem;
+}
+
+/* ── Badge ────────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 99px;
+  font-size: 0.63rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border: 1px solid var(--border);
+}
+.badge-idle    { color: var(--muted);  background: var(--panel); }
+.badge-running { color: var(--green);  background: #f0fdf4; border-color: #86efac; }
+.badge-done    { color: var(--blue);   background: #eff6ff; border-color: #93c5fd; }
+.badge-error   { color: var(--red);    background: #fef2f2; border-color: #fca5a5; }
+
+/* ── Controls ─────────────────────────────────────────────────────────────── */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.field { display: flex; align-items: center; gap: 0.4rem; }
+.field label { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+
+input[type="date"] {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  color: var(--text);
+  padding: 0.3rem 0.55rem;
+  font-size: 0.78rem;
+  font-family: inherit;
+  outline: none;
+}
+input[type="date"]:focus { border-color: #6b7280; }
+
+/* ── Buttons — minimal, outlined ─────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.33rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  font-size: 0.77rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--text);
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) { background: var(--panel); border-color: #b5b3ac; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn:not(:disabled):active { transform: scale(0.98); }
+
+/* Colored hover variants */
+.btn-green:hover:not(:disabled)  { border-color: #16a34a; color: var(--green);  background: #f0fdf4; }
+.btn-red:hover:not(:disabled)    { border-color: #dc2626; color: var(--red);    background: #fef2f2; }
+.btn-blue:hover:not(:disabled)   { border-color: #2563eb; color: var(--blue);   background: #eff6ff; }
+.btn-purple:hover:not(:disabled) { border-color: #7c3aed; color: var(--purple); background: #f5f3ff; }
+.btn-orange:hover:not(:disabled) { border-color: #c2410c; color: var(--orange); background: #fff7ed; }
+
+/* ── Terminal ─────────────────────────────────────────────────────────────── */
+.terminal {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 0.375rem;
+  padding: 0.75rem 1rem;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.74rem;
+  height: 260px;
+  overflow-y: auto;
+  line-height: 1.7;
+  scroll-behavior: smooth;
+}
+.terminal .placeholder { color: #30363d; font-style: italic; }
+
+.log { display: block; }
+.log.ok      { color: #56d364; }
+.log.error   { color: #f85149; }
+.log.skip    { color: #30363d; }
+.log.sitemap { color: #58a6ff; }
+.log.aviso   { color: #e3b341; }
+.log.bold    { color: #f0f6fc; font-weight: 600; }
+.log.default { color: #484f58; }
+
+/* ── Session stats ────────────────────────────────────────────────────────── */
+.stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.stat {
+  background: var(--panel);
+  border-radius: 0.25rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+}
+.stat-key { color: var(--muted); }
+.stat-val { color: var(--text); font-weight: 600; margin-left: 0.35rem; font-variant-numeric: tabular-nums; }
+
+/* ── Data preview ─────────────────────────────────────────────────────────── */
+.summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  padding: 0.4rem 0.85rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: inherit;
+  margin-bottom: -1px;
+  transition: color 0.1s, border-color 0.1s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
+
+.pane { display: none; }
+.pane.active { display: block; }
+
+.tab-meta {
+  padding: 0.85rem 0 0.75rem;
+  font-size: 0.77rem;
+  line-height: 1.5;
+}
+.role-badge {
+  display: inline-block;
+  background: #fef9c3;
+  color: #78350f;
+  border: 1px solid #fde68a;
+  border-radius: 0.2rem;
+  padding: 0.05rem 0.45rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+.tab-desc { color: var(--muted); }
+
+.table-scroll { overflow-x: auto; }
+
+table { border-collapse: collapse; width: 100%; font-size: 0.75rem; }
+th, td {
+  padding: 0.38rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+th {
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+tr:hover td { background: #f8f7f4; }
+td.num { text-align: center; font-variant-numeric: tabular-nums; color: #1e3a8a; }
+td.section-economia { color: #92400e; }
+td.section-el-pais  { color: #166534; }
+td.section-el-mundo { color: #1e3a8a; }
+td.section-sociedad { color: #831843; }
+td.preview { color: var(--muted); max-width: 22rem; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── KPI flash — adaptado a tema claro ───────────────────────────────────── */
+@keyframes fl-green  { 0%,100%{ background:var(--panel);box-shadow:none }
+                       30%    { background:#bbf7d0;box-shadow:0 0 14px 3px rgba(22,163,74,.22) } }
+@keyframes fl-yellow { 0%,100%{ background:var(--panel);box-shadow:none }
+                       30%    { background:#fef08a;box-shadow:0 0 14px 3px rgba(161,98,7,.22) } }
+@keyframes fl-blue   { 0%,100%{ background:var(--panel);box-shadow:none }
+                       30%    { background:#bfdbfe;box-shadow:0 0 14px 3px rgba(37,99,235,.22) } }
+@keyframes fl-pink   { 0%,100%{ background:var(--panel);box-shadow:none }
+                       30%    { background:#fbcfe8;box-shadow:0 0 14px 3px rgba(219,39,119,.22) } }
+@keyframes fl-orange { 0%,100%{ background:var(--panel);box-shadow:none }
+                       30%    { background:#fed7aa;box-shadow:0 0 14px 3px rgba(194,65,12,.22) } }
+
+.kpi.fl-yellow, .stat.fl-yellow { animation: fl-yellow .7s ease-out both; }
+.kpi.fl-green,  .stat.fl-green  { animation: fl-green  .7s ease-out both; }
+.kpi.fl-blue,   .stat.fl-blue   { animation: fl-blue   .7s ease-out both; }
+.kpi.fl-pink,   .stat.fl-pink   { animation: fl-pink   .7s ease-out both; }
+.stat.fl-orange                  { animation: fl-orange .7s ease-out both; }
+
+/* ── Classifier selector tabs ────────────────────────────────────────────── */
+.clf-selector {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+}
+.clf-tab {
+  padding: .32rem .9rem;
+  border: 1px solid var(--border);
+  border-radius: .25rem;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: .77rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .1s, border-color .1s, color .1s;
+}
+.clf-tab:hover:not(:disabled):not(.active) {
+  background: var(--panel);
+  border-color: #b5b3ac;
+  color: var(--text);
+}
+.clf-tab.active {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--surface);
+}
+.clf-tab:disabled { opacity: .35; cursor: not-allowed; }
+
+/* ── Per-classifier panel ─────────────────────────────────────────────────── */
+.clf-panel { display: none; }
+.clf-panel.active { display: block; }
+
+.clf-desc {
+  font-size: .75rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+
+/* ── Metrics sub-panel ────────────────────────────────────────────────────── */
+.metrics-sub-label {
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin-bottom: .6rem;
+}
+
+.auc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .4rem;
+}
+@media (max-width:600px) { .auc-grid { grid-template-columns: repeat(2,1fr); } }
+
+.auc-card {
+  background: var(--panel);
+  border-radius: .25rem;
+  padding: .65rem .75rem .6rem;
+  text-align: center;
+}
+.auc-label {
+  font-size: .63rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin-bottom: .25rem;
+}
+.auc-value {
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+
+.conf-table th { font-size: .64rem; }
+.conf-table td { text-align: center; font-variant-numeric: tabular-nums; font-size: .8rem; }
+.conf-table td.row-label { text-align: left; font-weight: 600; color: var(--muted); padding-right: 1rem; }
+
+/* ── Comparison table ─────────────────────────────────────────────────────── */
+.compare-section {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+.compare-table { border-collapse: collapse; width: 100%; font-size: .8rem; }
+.compare-table th, .compare-table td {
+  padding: .45rem .9rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.compare-table th {
+  background: var(--panel);
+  font-size: .64rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  font-weight: 600;
+  color: var(--muted);
+}
+.compare-table td.metric-name { color: var(--muted); font-size: .75rem; }
+.compare-table td.val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; min-width: 7rem; }
+.compare-table td.winner { background: rgba(22,163,74,.08); color: #14532d; }
+.compare-table td.loser  { color: var(--muted); font-weight: 400; }
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+#app-content { transition: filter .22s ease, opacity .22s ease; }
+#app-content.blurred {
+  filter: blur(4px) brightness(.88);
+  pointer-events: none;
+  user-select: none;
+}
+#modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+#modal-overlay.open { opacity: 1; pointer-events: all; }
+#modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  width: min(92vw, 760px);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(12px) scale(.98);
+  transition: transform .2s ease;
+  box-shadow: 0 8px 40px rgba(0,0,0,.12);
+}
+#modal-overlay.open #modal-box { transform: none; }
+#modal-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: .7rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#modal-title {
+  flex: 1;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#modal-body {
+  padding: 1.2rem 1.4rem;
+  overflow-y: auto;
+  font-size: .83rem;
+  line-height: 1.8;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  flex: 1;
+}
+.btn-leer {
+  padding: .13rem .45rem;
+  font-size: .67rem;
+  border-radius: .2rem;
+  background: var(--panel);
+  color: var(--blue);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: background .1s, color .1s;
+}
+.btn-leer:hover { background: #1e3a8a; color: #fff; border-color: #1e3a8a; }
+</style>
+</head>
+<body>
+<div id="app-content">
+<div class="wrapper">
+
+<header>
+  <h1>Web Mining Pipeline Dashboard</h1>
+  <p>TP1 2026 — Scraping + Vectorización de Página 12</p>
+</header>
+
+<!-- ── KPIs ─────────────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-label">Artículos descargados por sección</div>
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Economía</div>
+      <div class="kpi-value" id="k-economia">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">El País</div>
+      <div class="kpi-value" id="k-el-pais">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">El Mundo</div>
+      <div class="kpi-value" id="k-el-mundo">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Sociedad</div>
+      <div class="kpi-value" id="k-sociedad">—</div>
+    </div>
+  </div>
+  <div class="kpi-total" id="k-total"></div>
+</div>
+
+<!-- ── Scraping ──────────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-label">
+    Scraping
+    <span class="badge badge-idle" id="scraper-badge">Inactivo</span>
+  </div>
+
+  <div class="controls">
+    <div class="field">
+      <label>Desde</label>
+      <input type="date" id="date-start">
+    </div>
+    <div class="field">
+      <label>Hasta</label>
+      <input type="date" id="date-end">
+    </div>
+    <button class="btn btn-green"  id="btn-start" onclick="startScraper()">▶ Iniciar scraping</button>
+    <button class="btn btn-red"    id="btn-stop"  onclick="stopScraper()" disabled>■ Detener</button>
+  </div>
+
+  <div id="session-stats" style="display:none; margin-bottom:.9rem;">
+    <div class="stats-row">
+      <div class="stat"><span class="stat-key">Encolados</span>           <span class="stat-val" id="ss-enqueued">0</span></div>
+      <div class="stat"><span class="stat-key">URLs visitadas</span>       <span class="stat-val" id="ss-crawled">0</span></div>
+      <div class="stat"><span class="stat-key">Guardados (sesión)</span>   <span class="stat-val" id="ss-saved">0</span></div>
+      <div class="stat" id="stat-omitidos" title="El archivo ya existe en disco de una sesión anterior">
+        <span class="stat-key">Ya existe</span>                            <span class="stat-val" id="ss-omitidos">0</span></div>
+      <div class="stat" id="stat-fuera" title="Artículo de una sección no rastreada (deportes, cultura, etc.)">
+        <span class="stat-key">Fuera de sección</span>                     <span class="stat-val" id="ss-fuera">0</span></div>
+      <div class="stat" id="stat-fecha" style="display:none; min-width:13rem;">
+        <span class="stat-key">Escaneando</span>
+        <span class="stat-val" id="ss-fecha" style="font-size:1rem; letter-spacing:.01em;">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="terminal" id="log-scraper">
+    <span class="placeholder">El log del spider aparecerá aquí al iniciar el scraping…</span>
+  </div>
+</div>
+
+<!-- ── Vectorización ─────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-label">
+    HTML → Texto y vectorización (BoW)
+    <span class="badge badge-idle" id="transform-badge">Inactivo</span>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-blue" id="btn-transform" onclick="startTransform()">
+      ⚙ Procesar HTMLs → joblib
+    </button>
+  </div>
+
+  <div class="terminal" id="log-transform">
+    <span class="placeholder">El log de vectorización aparecerá aquí…</span>
+  </div>
+</div>
+
+<!-- ── Preview de datos ──────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-label">Preview de datos generados (10 filas × 10 columnas)</div>
+
+  <div class="controls">
+    <button class="btn btn-purple" id="btn-preview" onclick="loadPreview()">
+      📊 Cargar tablas
+    </button>
+  </div>
+
+  <div id="preview-area" style="display:none">
+    <div class="summary-row" id="summary-row"></div>
+    <div class="tabs" id="tab-bar"></div>
+    <div id="tab-panes"></div>
+  </div>
+</div>
+
+<!-- ── Clasificadores ─────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-label">Clasificadores</div>
+
+  <div class="clf-selector">
+    <button class="clf-tab active" id="clf-tab-svm" onclick="switchClf('svm')">BoW + SVM</button>
+    <button class="clf-tab"        id="clf-tab-w2v" onclick="switchClf('w2v')">TF-IDF + LSA + SVM</button>
+  </div>
+
+  <!-- BoW + SVM panel -->
+  <div class="clf-panel active" id="panel-svm">
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;">
+      <span class="clf-desc" style="margin-bottom:0">Vectores BoW → selección chi2 (k=150) → SVM kernel lineal</span>
+      <span class="badge badge-idle" id="badge-svm">Inactivo</span>
+    </div>
+    <div class="controls">
+      <button class="btn btn-blue"   id="btn-train-svm"   onclick="startModel('svm')">▶ Entrenar</button>
+      <button class="btn btn-red"    id="btn-stop-svm"    onclick="stopModel('svm')" disabled>■ Detener</button>
+      <button class="btn btn-purple" id="btn-metrics-svm" onclick="loadMetrics('svm')" style="display:none">📊 Ver métricas</button>
+    </div>
+    <div class="terminal" id="log-svm">
+      <span class="placeholder">El log de entrenamiento (BoW + SVM) aparecerá aquí…</span>
+    </div>
+    <div id="metrics-svm" style="display:none; margin-top:1.75rem;">
+      <div class="metrics-sub-label">Resumen</div>
+      <div class="stats-row" id="summary-svm"></div>
+      <div style="margin-top:1.1rem;">
+        <div class="metrics-sub-label">AUC por clase (promedio 5 folds)</div>
+        <div class="auc-grid" id="auc-svm"></div>
+      </div>
+      <div style="margin-top:1.25rem;">
+        <div class="metrics-sub-label">Matriz de confusión (acumulada, 5 folds)</div>
+        <p style="font-size:.73rem;color:var(--muted);margin-bottom:.6rem;">Filas = clase real · Columnas = clase predicha · Verde = aciertos · Rojo = errores</p>
+        <div class="table-scroll"><table class="conf-table" id="conf-svm"></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Word2Vec + SVM panel -->
+  <div class="clf-panel" id="panel-w2v">
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;">
+      <span class="clf-desc" style="margin-bottom:0">TF-IDF → TruncatedSVD / LSA (100 dims, denso) → SVM kernel lineal</span>
+      <span class="badge badge-idle" id="badge-w2v">Inactivo</span>
+    </div>
+    <div class="controls">
+      <button class="btn btn-blue"   id="btn-train-w2v"   onclick="startModel('w2v')">▶ Entrenar</button>
+      <button class="btn btn-red"    id="btn-stop-w2v"    onclick="stopModel('w2v')" disabled>■ Detener</button>
+      <button class="btn btn-purple" id="btn-metrics-w2v" onclick="loadMetrics('w2v')" style="display:none">📊 Ver métricas</button>
+    </div>
+    <div class="terminal" id="log-w2v">
+      <span class="placeholder">El log de entrenamiento (Word2Vec + SVM) aparecerá aquí…</span>
+    </div>
+    <div id="metrics-w2v" style="display:none; margin-top:1.75rem;">
+      <div class="metrics-sub-label">Resumen</div>
+      <div class="stats-row" id="summary-w2v"></div>
+      <div style="margin-top:1.1rem;">
+        <div class="metrics-sub-label">AUC por clase (promedio 5 folds)</div>
+        <div class="auc-grid" id="auc-w2v"></div>
+      </div>
+      <div style="margin-top:1.25rem;">
+        <div class="metrics-sub-label">Matriz de confusión (acumulada, 5 folds)</div>
+        <p style="font-size:.73rem;color:var(--muted);margin-bottom:.6rem;">Filas = clase real · Columnas = clase predicha · Verde = aciertos · Rojo = errores</p>
+        <div class="table-scroll"><table class="conf-table" id="conf-w2v"></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comparison — appears when both models are trained -->
+  <div id="compare-bar" style="display:none; margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <button class="btn btn-orange" onclick="toggleComparison()">⚖ Comparar modelos</button>
+      <span style="font-size:.75rem;color:var(--muted);">Ambos modelos entrenados — podés comparar sus métricas</span>
+    </div>
+    <div id="comparison-panel" style="display:none; margin-top:1.25rem;">
+      <div class="metrics-sub-label">Comparativa BoW + SVM vs Word2Vec + SVM</div>
+      <div class="table-scroll"><table class="compare-table" id="compare-table"></table></div>
+    </div>
+  </div>
+
+</div>
+
+</div><!-- /wrapper -->
+</div><!-- /app-content -->
+
+<!-- ── Modal lector ─────────────────────────────────────────────────────────── -->
+<div id="modal-overlay" onclick="closeModal()">
+  <div id="modal-box" onclick="event.stopPropagation()">
+    <div id="modal-header">
+      <span id="modal-title"></span>
+      <button class="btn btn-red" style="padding:.28rem .8rem;font-size:.75rem;flex-shrink:0" onclick="closeModal()">✕ Cerrar</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ── Estado ───────────────────────────────────────────────────────────────────
+
+const S = {
+  scraperRunning:   false,
+  transformRunning: false,
+  kpiTimer:    null,
+  scraperEs:   null,
+  transformEs: null,
+  activeClf: 'svm',
+  clf: {
+    svm: { running: false, done: false, metrics: null, es: null },
+    w2v: { running: false, done: false, metrics: null, es: null },
+  },
+  stats:      { enqueued: 0, crawled: 0, saved: 0, omitidos: 0, fuera: 0 },
+  dateCounts: {},
+  currentDate: null,
+};
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+
+(function init() {
+  const today = new Date().toISOString().slice(0,10);
+  const ago2  = new Date(Date.now() -  2*864e5).toISOString().slice(0,10);
+  document.getElementById('date-end').value   = today;
+  document.getElementById('date-start').value = ago2;
+  refreshKpis();
+  pollStatus();
+})();
+
+// ── KPIs ─────────────────────────────────────────────────────────────────────
+
+function refreshKpis() {
+  fetch('/api/kpis').then(r => r.json()).then(d => {
+    const secs = ['economia','el-pais','el-mundo','sociedad'];
+    secs.forEach(s => {
+      const el = document.getElementById('k-' + s);
+      if (el) el.textContent = (d[s] ?? 0).toLocaleString('es-AR');
+    });
+    const total = secs.reduce((a,s) => a + (d[s]??0), 0);
+    document.getElementById('k-total').textContent =
+      'Total: ' + total.toLocaleString('es-AR') + ' artículos';
+  }).catch(()=>{});
+}
+
+function startKpiPolling() {
+  stopKpiPolling();
+  S.kpiTimer = setInterval(refreshKpis, 3000);
+}
+function stopKpiPolling() {
+  clearInterval(S.kpiTimer);
+  S.kpiTimer = null;
+}
+
+// ── Status polling (5 s) ──────────────────────────────────────────────────────
+
+function pollStatus() {
+  fetch('/api/scraper/status').then(r=>r.json()).then(d=>{
+    if (S.scraperRunning !== d.running) {
+      setScraperState(d.running);
+      if (d.running && !S.scraperEs) {
+        openScraperStream();
+        startKpiPolling();
+      }
+    }
+  }).catch(()=>{});
+  fetch('/api/transform/status').then(r=>r.json()).then(d=>{
+    if (S.transformRunning !== d.running) {
+      setTransformState(d.running);
+      if (d.running && !S.transformEs) openTransformStream();
+    }
+  }).catch(()=>{});
+  fetch('/api/model/status').then(r=>r.json()).then(d=>{
+    ['svm','w2v'].forEach(clf => {
+      if (!d[clf]) return;
+      const prev = S.clf[clf];
+      if (prev.running !== d[clf].running) {
+        setClfState(clf, d[clf].running);
+        if (d[clf].running && !prev.es) openModelStream(clf);
+      }
+      if (d[clf].done && !prev.done) {
+        S.clf[clf].done = true;
+        document.getElementById('btn-metrics-' + clf).style.display = '';
+        checkBothDone();
+      }
+    });
+  }).catch(()=>{});
+  setTimeout(pollStatus, 5000);
+}
+
+// ── Scraper ───────────────────────────────────────────────────────────────────
+
+function startScraper() {
+  const start = document.getElementById('date-start').value;
+  const end   = document.getElementById('date-end').value;
+  fetch('/api/scraper/start', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({start, end}),
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) { alert(d.error); return; }
+    S.stats      = { enqueued: 0, crawled: 0, saved: 0, omitidos: 0, fuera: 0 };
+    S.dateCounts = {};
+    S.currentDate = null;
+    document.getElementById('stat-fecha').style.display = 'none';
+    updateSessionStats();
+    document.getElementById('session-stats').style.display = 'block';
+    setScraperState(true);
+    clearTerminal('log-scraper');
+    addLog('log-scraper', `Spider iniciado — PID ${d.pid}  |  rango: ${start} a ${end}`, 'bold');
+    addLog('log-scraper', 'Esperando primer evento de scrapy.log…', 'default');
+    openScraperStream();
+    startKpiPolling();
+  })
+  .catch(err => alert('Error al iniciar: ' + err));
+}
+
+function stopScraper() {
+  fetch('/api/scraper/stop', {method:'POST'})
+    .then(r => r.json())
+    .then(() => {
+      setScraperState(false);
+      addLog('log-scraper','■ Scraping detenido manualmente.','aviso');
+    });
+}
+
+function openScraperStream() {
+  if (S.scraperEs) S.scraperEs.close();
+  const es = new EventSource('/api/scraper/stream');
+  S.scraperEs = es;
+  es.onmessage = e => {
+    const ev = JSON.parse(e.data);
+    if (ev.type === 'ping') return;
+    if (ev.type === 'done') {
+      addLog('log-scraper', '── Scraping finalizado ──', 'bold');
+      setScraperState(false);
+      stopKpiPolling();
+      refreshKpis();
+      S.scraperEs = null;
+      es.close();
+      return;
+    }
+    if (ev.type === 'log') {
+      addLog('log-scraper', ev.msg, ev.cls || null);
+      parseStatsFromLog(ev.msg || '');
+    }
+  };
+  es.onerror = () => {};
+}
+
+function setScraperState(running) {
+  S.scraperRunning = running;
+  document.getElementById('btn-start').disabled     = running;
+  document.getElementById('btn-stop').disabled      = !running;
+  document.getElementById('btn-transform').disabled = running || S.transformRunning;
+  const b = document.getElementById('scraper-badge');
+  b.textContent = running ? 'En curso…' : 'Inactivo';
+  b.className   = 'badge ' + (running ? 'badge-running' : 'badge-idle');
+}
+
+// ── Transform ─────────────────────────────────────────────────────────────────
+
+function startTransform() {
+  fetch('/api/transform/start', {method:'POST'})
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) { alert(d.error); return; }
+    setTransformState(true);
+    clearTerminal('log-transform');
+    addLog('log-transform', 'Vectorización iniciada…', 'bold');
+    openTransformStream();
+  })
+  .catch(err => alert('Error: ' + err));
+}
+
+function openTransformStream() {
+  if (S.transformEs) S.transformEs.close();
+  const es = new EventSource('/api/transform/stream');
+  S.transformEs = es;
+  es.onmessage = e => {
+    const ev = JSON.parse(e.data);
+    if (ev.type === 'ping') return;
+    if (ev.type === 'done') {
+      addLog('log-transform', '── Vectorización finalizada ──', 'bold');
+      setTransformState(false);
+      S.transformEs = null;
+      es.close();
+      return;
+    }
+    if (ev.type === 'log') addLog('log-transform', ev.msg, ev.cls || null);
+  };
+  es.onerror = () => {};
+}
+
+function setTransformState(running) {
+  S.transformRunning = running;
+  document.getElementById('btn-transform').disabled = running || S.scraperRunning;
+  const b = document.getElementById('transform-badge');
+  b.textContent = running ? 'En curso…' : 'Inactivo';
+  b.className   = 'badge ' + (running ? 'badge-running' : 'badge-idle');
+}
+
+// ── Terminal helper ───────────────────────────────────────────────────────────
+
+function clearTerminal(id) {
+  document.getElementById(id).innerHTML = '';
+}
+
+function addLog(id, msg, forceCls) {
+  const term = document.getElementById(id);
+  const span = document.createElement('span');
+  span.className = 'log ' + (forceCls || classifyLine(msg));
+  span.textContent = msg;
+  term.appendChild(span);
+  term.appendChild(document.createElement('br'));
+  term.scrollTop = term.scrollHeight;
+}
+
+function classifyLine(msg) {
+  const m = msg.toLowerCase();
+  if (m.includes('guardado') || m.includes('ok'))           return 'ok';
+  if (m.includes('error'))                                   return 'error';
+  if (m.includes('omitido'))                                 return 'skip';
+  if (m.includes('sitemap') || m.includes('encolado'))       return 'sitemap';
+  if (m.includes('aviso')   || m.includes('warning')
+   || m.includes('warn'))                                    return 'aviso';
+  if (m.includes('===')     || m.includes('inicio')
+   || m.includes('fin del') || m.includes('finalizado'))    return 'bold';
+  return 'default';
+}
+
+// ── Flash ─────────────────────────────────────────────────────────────────────
+
+const SEC_FLASH = { 'economia':'fl-yellow', 'el-pais':'fl-green', 'el-mundo':'fl-blue', 'sociedad':'fl-pink' };
+
+function flash(el, cls) {
+  if (!el) return;
+  el.classList.remove(cls);
+  void el.offsetWidth;           // fuerza reflow para reiniciar la animación
+  el.classList.add(cls);
+  el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
+}
+
+// ── Session stats (parseo de líneas SSE en tiempo real) ───────────────────────
+
+function parseStatsFromLog(msg) {
+  if (!msg) return;
+
+  // ── Sitemap encolado: "[sitemap YYYY-MM-DD] N artículos encolados"
+  const sitemapMatch = msg.match(/\[sitemap (\d{4}-\d{2}-\d{2})\] (\d+) art/);
+  if (sitemapMatch) {
+    S.dateCounts[sitemapMatch[1]] = { total: parseInt(sitemapMatch[2], 10), done: 0 };
+    S.stats.enqueued += parseInt(sitemapMatch[2], 10);
+    flash(document.getElementById('ss-enqueued')?.closest('.stat'), 'fl-blue');
+    updateSessionStats();
+    return;
+  }
+
+  // ── URL de artículo visitada: "Crawled (200) <GET .../YYYY/MM/DD/slug/>"
+  if (msg.includes('Crawled (200)') && /pagina12\.com\.ar\/20\d\d\//.test(msg)) {
+    S.stats.crawled++;
+    const m = msg.match(/pagina12\.com\.ar\/(\d{4})\/(\d{2})\/(\d{2})\//);
+    if (m) {
+      const d = `${m[1]}-${m[2]}-${m[3]}`;
+      if (S.dateCounts[d]) { S.dateCounts[d].done++; S.currentDate = d; }
+      updateDateDisplay();
+    }
+    updateSessionStats();
+    return;
+  }
+
+  // ── Artículo guardado: "[seccion] #N guardado → nombre.html"
+  const guardadoMatch = msg.match(/\[([a-z-]+)\] #\d+ guardado/);
+  if (guardadoMatch) {
+    S.stats.saved++;
+    flash(document.getElementById('ss-saved')?.closest('.stat'), 'fl-green');
+    bumpKpi(guardadoMatch[1]);
+    updateSessionStats();
+    return;
+  }
+
+  // ── Ya existe: "[omitido:seccion] ya existe → nombre.html"
+  const omitidoMatch = msg.match(/\[omitido:([a-z-]+)\]/);
+  if (omitidoMatch) {
+    S.stats.omitidos++;
+    const sec = omitidoMatch[1];
+    flash(document.getElementById('stat-omitidos'), 'fl-green');
+    flash(document.getElementById('k-' + sec)?.closest('.kpi'), SEC_FLASH[sec] || 'fl-green');
+    updateSessionStats();
+    return;
+  }
+
+  // ── Fuera de sección: "[fuera-de-seccion] seccion → URL"
+  if (msg.includes('[fuera-de-seccion]')) {
+    S.stats.fuera++;
+    flash(document.getElementById('stat-fuera'), 'fl-orange');
+    updateSessionStats();
+    return;
+  }
+}
+
+function updateSessionStats() {
+  const { enqueued, crawled, saved, omitidos, fuera } = S.stats;
+  document.getElementById('ss-enqueued').textContent = enqueued.toLocaleString('es-AR');
+  document.getElementById('ss-crawled').textContent  = crawled.toLocaleString('es-AR');
+  document.getElementById('ss-saved').textContent    = saved.toLocaleString('es-AR');
+  document.getElementById('ss-omitidos').textContent = omitidos.toLocaleString('es-AR');
+  document.getElementById('ss-fuera').textContent    = fuera.toLocaleString('es-AR');
+}
+
+function updateDateDisplay() {
+  if (!S.currentDate || !S.dateCounts[S.currentDate]) return;
+  const { total, done } = S.dateCounts[S.currentDate];
+  const remaining = Math.max(0, total - done);
+  const wrap = document.getElementById('stat-fecha');
+  wrap.style.display = '';
+  document.getElementById('ss-fecha').textContent = `${S.currentDate} (${remaining})`;
+}
+
+function bumpKpi(section) {
+  const el = document.getElementById('k-' + section);
+  if (!el || el.textContent === '—') return;
+  const current = parseInt(el.textContent.replace(/[.,\s]/g, ''), 10) || 0;
+  el.textContent = (current + 1).toLocaleString('es-AR');
+  flash(el.closest('.kpi'), SEC_FLASH[section] || 'fl-green');
+  const secs = ['economia','el-pais','el-mundo','sociedad'];
+  const total = secs.reduce((sum, s) => {
+    const v = document.getElementById('k-' + s);
+    return sum + (v && v.textContent !== '—' ? parseInt(v.textContent.replace(/[.,\s]/g, ''), 10) || 0 : 0);
+  }, 0);
+  document.getElementById('k-total').textContent = 'Total: ' + total.toLocaleString('es-AR') + ' artículos';
+}
+
+// ── Data preview ──────────────────────────────────────────────────────────────
+
+function loadPreview() {
+  const btn = document.getElementById('btn-preview');
+  btn.disabled = true;
+  btn.textContent = 'Cargando…';
+
+  fetch('/api/data/preview')
+    .then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d.error)))
+    .then(renderPreview)
+    .catch(err => alert('No se pudo cargar: ' + err))
+    .finally(() => {
+      btn.disabled = false;
+      btn.textContent = '📊 Cargar tablas';
+    });
+}
+
+function renderPreview(data) {
+  document.getElementById('preview-area').style.display = 'block';
+
+  const s = data.summary;
+  const entries = [
+    ['Documentos', s.n_docs.toLocaleString('es-AR')],
+    ['Features (vocabulario)', s.n_features.toLocaleString('es-AR')],
+    ...Object.entries(s.por_seccion).map(([k,v]) => [k, v.toLocaleString('es-AR')]),
+  ];
+  document.getElementById('summary-row').innerHTML = entries.map(([k,v]) =>
+    `<div class="stat"><span class="stat-key">${k}</span><span class="stat-val">${v}</span></div>`
+  ).join('');
+
+  const tabBar   = document.getElementById('tab-bar');
+  const tabPanes = document.getElementById('tab-panes');
+  tabBar.innerHTML   = '';
+  tabPanes.innerHTML = '';
+
+  data.tabs.forEach((tab, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (idx === 0 ? ' active' : '');
+    btn.dataset.tab = tab.id;
+    btn.innerHTML = tab.role
+      ? `<span style="color:#92400e;margin-right:.25rem">★</span>${tab.label}`
+      : tab.label;
+    btn.onclick = () => switchTab(btn, tab.id);
+    tabBar.appendChild(btn);
+
+    const pane = document.createElement('div');
+    pane.className = 'pane' + (idx === 0 ? ' active' : '');
+    pane.id = 'pane-' + tab.id;
+
+    const meta = document.createElement('div');
+    meta.className = 'tab-meta';
+    meta.innerHTML = (tab.role
+      ? `<span class="role-badge">${tab.role}</span> `
+      : '') + `<span class="tab-desc">${tab.desc}</span>`;
+    pane.appendChild(meta);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'table-scroll';
+    const tbl = document.createElement('table');
+    tbl.id = 'tbl-' + tab.id;
+    wrap.appendChild(tbl);
+    pane.appendChild(wrap);
+    tabPanes.appendChild(pane);
+
+    buildTable(tbl, tab.columns, tab.rows, tab.fullTexts || null);
+  });
+}
+
+function buildTable(tbl, columns, rows, fullTexts = null) {
+  tbl.innerHTML = '';
+
+  const SECTIONS = ['economia','el-pais','el-mundo','sociedad'];
+  const numCols  = new Set();
+  if (rows.length > 0) rows[0].forEach((cell, i) => { if (typeof cell === 'number') numCols.add(i); });
+
+  const thead = tbl.createTHead();
+  const hrow  = thead.insertRow();
+  columns.forEach((c, i) => {
+    const th = document.createElement('th');
+    th.textContent = c;
+    if (numCols.has(i)) th.style.textAlign = 'center';
+    hrow.appendChild(th);
+  });
+  if (fullTexts) {
+    const th = document.createElement('th');
+    th.style.width = '1%';
+    hrow.appendChild(th);
+  }
+
+  const tbody = tbl.createTBody();
+  rows.forEach((row, rowIdx) => {
+    const tr = tbody.insertRow();
+    row.forEach((cell, i) => {
+      const td = tr.insertCell();
+      const val = cell ?? '';
+      if (typeof val === 'number') {
+        td.className = 'num';
+        td.textContent = val;
+      } else if (typeof val === 'string' && SECTIONS.includes(val)) {
+        td.className = 'section-' + val;
+        td.textContent = val;
+      } else if (typeof val === 'string' && val.length > 50) {
+        td.className = 'preview';
+        td.textContent = val;
+        td.title = val;
+      } else {
+        td.textContent = val;
+      }
+    });
+    if (fullTexts && fullTexts[rowIdx]) {
+      const td = tr.insertCell();
+      td.style.cssText = 'width:1%;white-space:nowrap;padding:.3rem .5rem';
+      const btn = document.createElement('button');
+      btn.className = 'btn-leer';
+      btn.textContent = '📖 Leer';
+      btn.onclick = () => openModal(
+        fullTexts[rowIdx],
+        `Doc #${row[0]} — ${row[1]}  (${row[3]} chars)`
+      );
+      td.appendChild(btn);
+    }
+  });
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+function switchTab(btn, id) {
+  document.querySelectorAll('#tab-bar .tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#tab-panes .pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('pane-' + id).classList.add('active');
+}
+
+// ── Modal lector ──────────────────────────────────────────────────────────────
+
+function openModal(text, title) {
+  document.getElementById('modal-title').textContent = title || '';
+  document.getElementById('modal-body').textContent  = text;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('app-content').classList.add('blurred');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('app-content').classList.remove('blurred');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── Clasificadores ────────────────────────────────────────────────────────────
+
+function switchClf(clf) {
+  S.activeClf = clf;
+  document.querySelectorAll('.clf-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('clf-tab-' + clf).classList.add('active');
+  document.querySelectorAll('.clf-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + clf).classList.add('active');
+}
+
+function startModel(clf) {
+  fetch('/api/model/start', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({classifier: clf}),
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) { alert(d.error); return; }
+    setClfState(clf, true);
+    clearTerminal('log-' + clf);
+    addLog('log-' + clf, `Entrenamiento iniciado — ${clf.toUpperCase()}`, 'bold');
+    openModelStream(clf);
+  })
+  .catch(err => alert('Error: ' + err));
+}
+
+function stopModel(clf) {
+  fetch('/api/model/stop', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({classifier: clf}),
+  })
+  .then(r => r.json())
+  .then(() => {
+    setClfState(clf, false);
+    addLog('log-' + clf, '■ Entrenamiento detenido manualmente.', 'aviso');
+  });
+}
+
+function openModelStream(clf) {
+  if (S.clf[clf].es) S.clf[clf].es.close();
+  const es = new EventSource('/api/model/stream?clf=' + clf);
+  S.clf[clf].es = es;
+  es.onmessage = e => {
+    const ev = JSON.parse(e.data);
+    if (ev.type === 'ping') return;
+    if (ev.type === 'done') {
+      addLog('log-' + clf, '── Entrenamiento finalizado ──', 'bold');
+      setClfState(clf, false);
+      S.clf[clf].es = null;
+      es.close();
+      fetch('/api/model/status').then(r=>r.json()).then(d => {
+        if (d[clf]?.done) {
+          S.clf[clf].done = true;
+          document.getElementById('btn-metrics-' + clf).style.display = '';
+          loadMetrics(clf);
+          checkBothDone();
+        }
+      }).catch(()=>{});
+      return;
+    }
+    if (ev.type === 'log') addLog('log-' + clf, ev.msg, ev.cls || null);
+  };
+  es.onerror = () => {};
+}
+
+function setClfState(clf, running) {
+  S.clf[clf].running = running;
+  document.getElementById('btn-train-' + clf).disabled = running;
+  document.getElementById('btn-stop-'  + clf).disabled = !running;
+  const b = document.getElementById('badge-' + clf);
+  b.textContent = running ? 'Entrenando…' : (S.clf[clf].done ? 'Listo' : 'Inactivo');
+  b.className   = 'badge ' + (running ? 'badge-running' : (S.clf[clf].done ? 'badge-done' : 'badge-idle'));
+}
+
+function checkBothDone() {
+  if (S.clf.svm.done && S.clf.w2v.done)
+    document.getElementById('compare-bar').style.display = '';
+}
+
+// ── Metrics rendering ─────────────────────────────────────────────────────────
+
+function loadMetrics(clf) {
+  fetch('/api/model/metrics?clf=' + clf)
+    .then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d.error)))
+    .then(m => { S.clf[clf].metrics = m; renderMetrics(clf, m); })
+    .catch(err => alert('No se pudo cargar métricas: ' + err));
+}
+
+function renderMetrics(clf, m) {
+  document.getElementById('metrics-' + clf).style.display = 'block';
+
+  const b = document.getElementById('badge-' + clf);
+  b.textContent = 'Listo';
+  b.className   = 'badge badge-done';
+  S.clf[clf].done = true;
+
+  const featLabel = clf === 'svm'
+    ? `${m.n_features_sel} / ${(m.n_features_orig||0).toLocaleString('es-AR')} (chi2)`
+    : `${m.n_features_sel} dims LSA (var. expl.: ${m.lsa_var_explained ? (m.lsa_var_explained*100).toFixed(1)+'%' : '—'})`;
+
+  const entries = [
+    ['Accuracy promedio', `${(m.accuracy_mean * 100).toFixed(1)} %`],
+    ['Desviación std',    `± ${(m.accuracy_std * 100).toFixed(1)} %`],
+    ['Representación',    featLabel],
+    ['Docs',              m.n_docs.toLocaleString('es-AR')],
+    ['Tiempo total',      `${m.elapsed_s} s`],
+    ['Folds CV',          m.n_folds],
+  ];
+  document.getElementById('summary-' + clf).innerHTML = entries.map(([k,v]) =>
+    `<div class="stat"><span class="stat-key">${k}</span><span class="stat-val">${v}</span></div>`
+  ).join('');
+
+  const aucEl = document.getElementById('auc-' + clf);
+  aucEl.innerHTML = '';
+  Object.entries(m.auc_por_clase).forEach(([clase, val]) => {
+    aucEl.innerHTML += `<div class="auc-card">
+      <div class="auc-label">${clase}</div>
+      <div class="auc-value">${(val*100).toFixed(1)}<span style="font-size:1rem;font-weight:400;opacity:.6"> %</span></div>
+    </div>`;
+  });
+
+  renderConfMatrix('conf-' + clf, m.confusion_matrix, m.clases);
+}
+
+function renderConfMatrix(tableId, matrix, clases) {
+  const tbl    = document.getElementById(tableId);
+  tbl.innerHTML = '';
+  const maxVal  = Math.max(...matrix.flat(), 1);
+
+  const hrow = tbl.createTHead().insertRow();
+  const th0  = document.createElement('th');
+  th0.textContent = 'Real \\ Pred.';
+  th0.style.textAlign = 'left';
+  hrow.appendChild(th0);
+  clases.forEach(c => { const th = document.createElement('th'); th.textContent = c; hrow.appendChild(th); });
+
+  const tbody = tbl.createTBody();
+  matrix.forEach((row, i) => {
+    const tr = tbody.insertRow();
+    const lbl = tr.insertCell();
+    lbl.className = 'row-label';
+    lbl.textContent = clases[i];
+    row.forEach((val, j) => {
+      const td = tr.insertCell();
+      td.textContent = val;
+      const intensity = val / maxVal;
+      if (i === j) {
+        td.style.background = `rgba(22,163,74,${(intensity*.35+.06).toFixed(2)})`;
+        td.style.fontWeight = '600';
+        td.style.color = intensity > .5 ? '#14532d' : 'var(--text)';
+      } else if (val > 0) {
+        td.style.background = `rgba(239,68,68,${(intensity*.4).toFixed(2)})`;
+        td.style.color = intensity > .5 ? '#7f1d1d' : 'var(--text)';
+      }
+    });
+  });
+}
+
+// ── Comparison ────────────────────────────────────────────────────────────────
+
+let _comparisonOpen = false;
+
+function toggleComparison() {
+  _comparisonOpen = !_comparisonOpen;
+  const panel = document.getElementById('comparison-panel');
+  panel.style.display = _comparisonOpen ? 'block' : 'none';
+  if (_comparisonOpen) renderComparison();
+}
+
+function renderComparison() {
+  const ms  = S.clf.svm.metrics;
+  const mw  = S.clf.w2v.metrics;
+  if (!ms || !mw) {
+    // load whichever is missing
+    const loadIfMissing = (clf, cb) => {
+      if (S.clf[clf].metrics) { cb(); return; }
+      fetch('/api/model/metrics?clf=' + clf).then(r=>r.json()).then(m => {
+        S.clf[clf].metrics = m; cb();
+      }).catch(()=>{});
+    };
+    loadIfMissing('svm', () => loadIfMissing('w2v', renderComparison));
+    return;
+  }
+
+  const tbl   = document.getElementById('compare-table');
+  tbl.innerHTML = '';
+
+  // Header
+  const thead = tbl.createTHead();
+  const hr    = thead.insertRow();
+  ['Métrica', 'BoW + SVM', 'Word2Vec + SVM'].forEach((h, i) => {
+    const th = document.createElement('th');
+    th.textContent = h;
+    if (i > 0) th.style.textAlign = 'right';
+    hr.appendChild(th);
+  });
+
+  const tbody = tbl.createTBody();
+
+  function addRow(label, svmVal, w2vVal, higherIsBetter = true) {
+    const svmNum = parseFloat(svmVal);
+    const w2vNum = parseFloat(w2vVal);
+    const svmWins = higherIsBetter ? svmNum >= w2vNum : svmNum <= w2vNum;
+    const tie     = Math.abs(svmNum - w2vNum) < 0.0001;
+
+    const tr = tbody.insertRow();
+    const c0 = tr.insertCell(); c0.className = 'metric-name'; c0.textContent = label;
+    const c1 = tr.insertCell(); c1.className = 'val ' + (tie ? '' : svmWins ? 'winner' : 'loser'); c1.textContent = svmVal;
+    const c2 = tr.insertCell(); c2.className = 'val ' + (tie ? '' : svmWins ? 'loser'  : 'winner'); c2.textContent = w2vVal;
+  }
+
+  addRow('Accuracy promedio',
+    `${(ms.accuracy_mean*100).toFixed(2)} %`,
+    `${(mw.accuracy_mean*100).toFixed(2)} %`);
+  addRow('Desviación std (CV)',
+    `± ${(ms.accuracy_std*100).toFixed(2)} %`,
+    `± ${(mw.accuracy_std*100).toFixed(2)} %`,
+    false);  // lower is better
+
+  // AUC per class (use first available class order)
+  const clases = ms.clases || Object.keys(ms.auc_por_clase);
+  clases.forEach(c => {
+    addRow(`AUC ${c}`,
+      `${((ms.auc_por_clase[c]||0)*100).toFixed(2)} %`,
+      `${((mw.auc_por_clase[c]||0)*100).toFixed(2)} %`);
+  });
+
+  addRow('Tiempo entrenamiento', `${ms.elapsed_s} s`, `${mw.elapsed_s} s`, false);
+
+  // Informative rows (no winner)
+  [
+    ['Representación', ms.features_method, mw.features_method],
+    ['Docs entrenados', ms.n_docs.toLocaleString('es-AR'), mw.n_docs.toLocaleString('es-AR')],
+  ].forEach(([label, sv, wv]) => {
+    const tr = tbody.insertRow();
+    const c0 = tr.insertCell(); c0.className = 'metric-name'; c0.textContent = label;
+    const c1 = tr.insertCell(); c1.className = 'val'; c1.textContent = sv;
+    const c2 = tr.insertCell(); c2.className = 'val'; c2.textContent = wv;
+  });
+}
+</script>
+</body>
+</html>

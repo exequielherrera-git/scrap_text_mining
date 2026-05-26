@@ -1,0 +1,29 @@
+# Datos generados por el pipeline (no se versiona, se regenera corriendo el pipeline)
+data/raw/
+data/artifacts/
+
+# Logs
+*.log
+.scrapy/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+.env
+
+# IDEs
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
