@@ -69,6 +69,6 @@ class MeanEmbeddingVectorizer:
         """
         return np.vstack([self.word_average(doc) for doc in docs])
 
-def fit_transform(self,  self, docs:List[str]) -> np.ndarray:
+    def fit_transform(self, docs: List[str]) -> np.ndarray:
         return self.transform(docs)
 
