@@ -1,3 +1,6 @@
+# Claude Code (configuración local, no necesaria para el proyecto)
+.claude/
+
 # Datos generados por el pipeline (no se versiona, se regenera corriendo el pipeline)
 data/raw/
 data/artifacts/
@@ -27,3 +30,8 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Embeddings pre-entrenados (archivos grandes, no se versionan)
+resources/*.bin
+resources/*.bin.gz
+resources/*.txt.bz2

@@ -14,12 +14,14 @@ class MeanEmbeddingVectorizer:
     def __init__(self, word_embedding, tokenizer: Callable[[str], List[str]], stopwords:Optional[List[str]] = None):
         """
         Inicializar un Vectorizer compatible con scikit-learn que utiliza un embedding para crear la representacion vectorial de un documento.
-        :param word_embedding: Un word embedding de la biblioteca gensim.
+        :param word_embedding: KeyedVectors (gensim) o cualquier objeto con vector_size, __contains__ y get_vector.
+                               También acepta un modelo gensim.models.Word2Vec completo (usa su atributo .wv).
         :param tokenizer: El tokenizador; una funcion que reciba un texto y retorne una secuencia de tokens de ese texto.
         :param stopwords: Una lista opcional de stopwords, 1 palabra por linea.
         """
-        self.word_embedding = word_embedding
-        self.vector_size = word_embedding.wv.vector_size
+        # Soportar tanto gensim.models.Word2Vec (tiene .wv) como KeyedVectors directamente
+        self.word_embedding = getattr(word_embedding, 'wv', word_embedding)
+        self.vector_size = self.word_embedding.vector_size
         self.tokenizer = tokenizer
         if stopwords:
             self.stopwords = set(stopwords)
@@ -49,16 +51,15 @@ class MeanEmbeddingVectorizer:
         :param doc: El texto de un documento
         :return: mean: El promedio (centroide) de los vectores de tokens que están en el embedding
         """
-        # saltear palabras que no estén en el embedding
-        words = [word.lower() for word in self.tokenizer(doc)]
-        promedio_vectores = sum(self.word_embedding.wv.get_vector(word) for word in words if word not in self.stopwords and word in self.word_embedding.wv.vocab)
-
-        if isinstance(promedio_vectores, np.ndarray):
-            promedio_vectores /= float(len(doc))
-            return promedio_vectores
-        else:
-            # si ningun token esta en el embeeding, o si texto esta vacio, entonces mean no es un vector sino el numero 0. Retornar un vector de ceros.
+        words = [word.lower() for word in self.tokenizer(doc) if word.lower() not in self.stopwords]
+        valid_vectors = [
+            self.word_embedding.get_vector(word)
+            for word in words
+            if word in self.word_embedding
+        ]
+        if not valid_vectors:
             return np.zeros(self.vector_size)
+        return np.mean(valid_vectors, axis=0)
 
 
     def word_average_list(self, docs: List[str]) -> np.ndarray:
@@ -69,6 +70,5 @@ class MeanEmbeddingVectorizer:
         """
         return np.vstack([self.word_average(doc) for doc in docs])
 
-    def fit_transform(self, docs: List[str]) -> np.ndarray:
+    def fit_transform(self, docs: List[str], y=None) -> np.ndarray:
         return self.transform(docs)
-

@@ -45,9 +45,9 @@ _transform_proc: subprocess.Popen | None = None
 _transform_lock = threading.Lock()
 _transform_q: queue.Queue = queue.Queue(maxsize=1000)
 
-_CLASSIFIERS   = ('svm', 'w2v')
-_MODEL_SCRIPTS = {'svm': 'model.py', 'w2v': 'model_w2v.py'}
-_METRICS_FILES = {'svm': 'metricas_svm.json', 'w2v': 'metricas_w2v.json'}
+_CLASSIFIERS   = ('svm', 'w2v', 'embed')
+_MODEL_SCRIPTS = {'svm': 'model.py', 'w2v': 'model_w2v.py', 'embed': 'model_embed.py'}
+_METRICS_FILES = {'svm': 'metricas_svm.json', 'w2v': 'metricas_w2v.json', 'embed': 'metricas_embed.json'}
 
 _model_procs:  dict[str, subprocess.Popen | None] = {c: None for c in _CLASSIFIERS}
 _model_locks:  dict[str, threading.Lock]          = {c: threading.Lock() for c in _CLASSIFIERS}

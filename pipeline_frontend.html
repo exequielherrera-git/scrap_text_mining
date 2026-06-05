@@ -613,8 +613,9 @@ td.preview { color: var(--muted); max-width: 22rem; overflow: hidden; text-overf
   <div class="section-label">Clasificadores</div>
 
   <div class="clf-selector">
-    <button class="clf-tab active" id="clf-tab-svm" onclick="switchClf('svm')">BoW + SVM</button>
-    <button class="clf-tab"        id="clf-tab-w2v" onclick="switchClf('w2v')">TF-IDF + LSA + SVM</button>
+    <button class="clf-tab active" id="clf-tab-svm"   onclick="switchClf('svm')">BoW + SVM</button>
+    <button class="clf-tab"        id="clf-tab-w2v"   onclick="switchClf('w2v')">TF-IDF + LSA + SVM</button>
+    <button class="clf-tab"        id="clf-tab-embed" onclick="switchClf('embed')">Word2Vec + SVM</button>
   </div>
 
   <!-- BoW + SVM panel -->
@@ -675,14 +676,43 @@ td.preview { color: var(--muted); max-width: 22rem; overflow: hidden; text-overf
     </div>
   </div>
 
-  <!-- Comparison — appears when both models are trained -->
+  <!-- Word2Vec embeddings + SVM panel -->
+  <div class="clf-panel" id="panel-embed">
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;">
+      <span class="clf-desc" style="margin-bottom:0">Word2Vec MeanEmbedding (300 dims, SBW) → SVM kernel lineal</span>
+      <span class="badge badge-idle" id="badge-embed">Inactivo</span>
+    </div>
+    <div class="controls">
+      <button class="btn btn-blue"   id="btn-train-embed"   onclick="startModel('embed')">▶ Entrenar</button>
+      <button class="btn btn-red"    id="btn-stop-embed"    onclick="stopModel('embed')" disabled>■ Detener</button>
+      <button class="btn btn-purple" id="btn-metrics-embed" onclick="loadMetrics('embed')" style="display:none">📊 Ver métricas</button>
+    </div>
+    <div class="terminal" id="log-embed">
+      <span class="placeholder">El log de entrenamiento (Word2Vec + SVM) aparecerá aquí…</span>
+    </div>
+    <div id="metrics-embed" style="display:none; margin-top:1.75rem;">
+      <div class="metrics-sub-label">Resumen</div>
+      <div class="stats-row" id="summary-embed"></div>
+      <div style="margin-top:1.1rem;">
+        <div class="metrics-sub-label">AUC por clase (promedio 5 folds)</div>
+        <div class="auc-grid" id="auc-embed"></div>
+      </div>
+      <div style="margin-top:1.25rem;">
+        <div class="metrics-sub-label">Matriz de confusión (acumulada, 5 folds)</div>
+        <p style="font-size:.73rem;color:var(--muted);margin-bottom:.6rem;">Filas = clase real · Columnas = clase predicha · Verde = aciertos · Rojo = errores</p>
+        <div class="table-scroll"><table class="conf-table" id="conf-embed"></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comparison — appears when at least 2 models are trained -->
   <div id="compare-bar" style="display:none; margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--border);">
     <div style="display:flex;align-items:center;gap:.75rem;">
       <button class="btn btn-orange" onclick="toggleComparison()">⚖ Comparar modelos</button>
-      <span style="font-size:.75rem;color:var(--muted);">Ambos modelos entrenados — podés comparar sus métricas</span>
+      <span style="font-size:.75rem;color:var(--muted);">Al menos 2 modelos entrenados — podés comparar sus métricas</span>
     </div>
     <div id="comparison-panel" style="display:none; margin-top:1.25rem;">
-      <div class="metrics-sub-label">Comparativa BoW + SVM vs Word2Vec + SVM</div>
+      <div class="metrics-sub-label">Comparativa de modelos</div>
       <div class="table-scroll"><table class="compare-table" id="compare-table"></table></div>
     </div>
   </div>
@@ -714,8 +744,9 @@ const S = {
   transformEs: null,
   activeClf: 'svm',
   clf: {
-    svm: { running: false, done: false, metrics: null, es: null },
-    w2v: { running: false, done: false, metrics: null, es: null },
+    svm:   { running: false, done: false, metrics: null, es: null },
+    w2v:   { running: false, done: false, metrics: null, es: null },
+    embed: { running: false, done: false, metrics: null, es: null },
   },
   stats:      { enqueued: 0, crawled: 0, saved: 0, omitidos: 0, fuera: 0 },
   dateCounts: {},
@@ -776,7 +807,7 @@ function pollStatus() {
     }
   }).catch(()=>{});
   fetch('/api/model/status').then(r=>r.json()).then(d=>{
-    ['svm','w2v'].forEach(clf => {
+    ['svm','w2v','embed'].forEach(clf => {
       if (!d[clf]) return;
       const prev = S.clf[clf];
       if (prev.running !== d[clf].running) {
@@ -1266,7 +1297,8 @@ function setClfState(clf, running) {
 }
 
 function checkBothDone() {
-  if (S.clf.svm.done && S.clf.w2v.done)
+  const doneCount = ['svm','w2v','embed'].filter(c => S.clf[c].done).length;
+  if (doneCount >= 2)
     document.getElementById('compare-bar').style.display = '';
 }
 
@@ -1289,6 +1321,8 @@ function renderMetrics(clf, m) {
 
   const featLabel = clf === 'svm'
     ? `${m.n_features_sel} / ${(m.n_features_orig||0).toLocaleString('es-AR')} (chi2)`
+    : clf === 'embed'
+    ? `${m.n_features_sel} dims (Word2Vec MeanEmbedding — ${m.embedding_model || 'SBW'})`
     : `${m.n_features_sel} dims LSA (var. expl.: ${m.lsa_var_explained ? (m.lsa_var_explained*100).toFixed(1)+'%' : '—'})`;
 
   const entries = [
@@ -1361,74 +1395,72 @@ function toggleComparison() {
 }
 
 function renderComparison() {
-  const ms  = S.clf.svm.metrics;
-  const mw  = S.clf.w2v.metrics;
-  if (!ms || !mw) {
-    // load whichever is missing
-    const loadIfMissing = (clf, cb) => {
-      if (S.clf[clf].metrics) { cb(); return; }
+  // Load any missing metrics then re-render
+  const needed = ['svm','w2v','embed'].filter(c => S.clf[c].done && !S.clf[c].metrics);
+  if (needed.length) {
+    let pending = needed.length;
+    needed.forEach(clf => {
       fetch('/api/model/metrics?clf=' + clf).then(r=>r.json()).then(m => {
-        S.clf[clf].metrics = m; cb();
-      }).catch(()=>{});
-    };
-    loadIfMissing('svm', () => loadIfMissing('w2v', renderComparison));
+        S.clf[clf].metrics = m;
+        if (--pending === 0) renderComparison();
+      }).catch(() => { if (--pending === 0) renderComparison(); });
+    });
     return;
   }
 
-  const tbl   = document.getElementById('compare-table');
+  // Only include models that are done
+  const active = ['svm','w2v','embed'].filter(c => S.clf[c].done && S.clf[c].metrics);
+  if (active.length < 2) return;
+
+  const labels = { svm: 'BoW + SVM', w2v: 'TF-IDF + LSA + SVM', embed: 'Word2Vec + SVM' };
+  const models = active.map(c => S.clf[c].metrics);
+
+  const tbl = document.getElementById('compare-table');
   tbl.innerHTML = '';
 
   // Header
-  const thead = tbl.createTHead();
-  const hr    = thead.insertRow();
-  ['Métrica', 'BoW + SVM', 'Word2Vec + SVM'].forEach((h, i) => {
+  const hr = tbl.createTHead().insertRow();
+  [['Métrica', 'left'], ...active.map(c => [labels[c], 'right'])].forEach(([h, align]) => {
     const th = document.createElement('th');
     th.textContent = h;
-    if (i > 0) th.style.textAlign = 'right';
+    th.style.textAlign = align;
     hr.appendChild(th);
   });
 
   const tbody = tbl.createTBody();
 
-  function addRow(label, svmVal, w2vVal, higherIsBetter = true) {
-    const svmNum = parseFloat(svmVal);
-    const w2vNum = parseFloat(w2vVal);
-    const svmWins = higherIsBetter ? svmNum >= w2vNum : svmNum <= w2vNum;
-    const tie     = Math.abs(svmNum - w2vNum) < 0.0001;
-
+  function addRow(label, vals, higherIsBetter = true) {
+    const nums = vals.map(v => parseFloat(v));
+    const best = higherIsBetter ? Math.max(...nums) : Math.min(...nums);
     const tr = tbody.insertRow();
     const c0 = tr.insertCell(); c0.className = 'metric-name'; c0.textContent = label;
-    const c1 = tr.insertCell(); c1.className = 'val ' + (tie ? '' : svmWins ? 'winner' : 'loser'); c1.textContent = svmVal;
-    const c2 = tr.insertCell(); c2.className = 'val ' + (tie ? '' : svmWins ? 'loser'  : 'winner'); c2.textContent = w2vVal;
+    vals.forEach((v, i) => {
+      const td = tr.insertCell(); td.className = 'val';
+      td.textContent = v;
+      const isBest = Math.abs(nums[i] - best) < 0.0001;
+      const allTie = nums.every(n => Math.abs(n - best) < 0.0001);
+      if (!allTie) td.classList.add(isBest ? 'winner' : 'loser');
+    });
   }
 
-  addRow('Accuracy promedio',
-    `${(ms.accuracy_mean*100).toFixed(2)} %`,
-    `${(mw.accuracy_mean*100).toFixed(2)} %`);
-  addRow('Desviación std (CV)',
-    `± ${(ms.accuracy_std*100).toFixed(2)} %`,
-    `± ${(mw.accuracy_std*100).toFixed(2)} %`,
-    false);  // lower is better
+  addRow('Accuracy promedio', models.map(m => `${(m.accuracy_mean*100).toFixed(2)} %`));
+  addRow('Desviación std (CV)', models.map(m => `± ${(m.accuracy_std*100).toFixed(2)} %`), false);
 
-  // AUC per class (use first available class order)
-  const clases = ms.clases || Object.keys(ms.auc_por_clase);
+  const clases = models[0].clases || Object.keys(models[0].auc_por_clase);
   clases.forEach(c => {
-    addRow(`AUC ${c}`,
-      `${((ms.auc_por_clase[c]||0)*100).toFixed(2)} %`,
-      `${((mw.auc_por_clase[c]||0)*100).toFixed(2)} %`);
+    addRow(`AUC ${c}`, models.map(m => `${((m.auc_por_clase[c]||0)*100).toFixed(2)} %`));
   });
 
-  addRow('Tiempo entrenamiento', `${ms.elapsed_s} s`, `${mw.elapsed_s} s`, false);
+  addRow('Tiempo entrenamiento', models.map(m => `${m.elapsed_s} s`), false);
 
   // Informative rows (no winner)
   [
-    ['Representación', ms.features_method, mw.features_method],
-    ['Docs entrenados', ms.n_docs.toLocaleString('es-AR'), mw.n_docs.toLocaleString('es-AR')],
-  ].forEach(([label, sv, wv]) => {
+    ['Representación',  models.map(m => m.features_method)],
+    ['Docs entrenados', models.map(m => m.n_docs.toLocaleString('es-AR'))],
+  ].forEach(([label, vals]) => {
     const tr = tbody.insertRow();
     const c0 = tr.insertCell(); c0.className = 'metric-name'; c0.textContent = label;
-    const c1 = tr.insertCell(); c1.className = 'val'; c1.textContent = sv;
-    const c2 = tr.insertCell(); c2.className = 'val'; c2.textContent = wv;
+    vals.forEach(v => { const td = tr.insertCell(); td.className = 'val'; td.textContent = v; });
   });
 }
 </script>

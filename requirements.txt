@@ -16,3 +16,4 @@ joblib>=1.5
 
 # NLP
 nltk>=3.9          # SnowballStemmer para tokenización en español
+# gensim>=4.3      # opcional: carga embeddings Word2Vec (no disponible para Python 3.14)
